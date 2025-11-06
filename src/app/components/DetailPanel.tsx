@@ -582,7 +582,7 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
               ))}
             </div>
             <p className="text-xs font-mono mt-3" style={{ color: 'var(--foreground-muted)' }}>
-              // hint: check these free platforms - content may be available
+              // hint: click to search on these free platforms
             </p>
           </div>
         )}

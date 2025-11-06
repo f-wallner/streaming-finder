@@ -1,49 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// JustWatch API endpoint (unofficial)
-const JUSTWATCH_API_BASE = 'https://apis.justwatch.com/content';
+// Since JustWatch API is not publicly available and doesn't work reliably,
+// we use a heuristic approach: Show public broadcasters for content that's likely available
+// This is more honest than showing a broken API integration
 
-interface JustWatchProvider {
-  provider_id: number;
-  monetization_type: string;
+interface MediathekHeuristics {
+  showForCountries: string[];
+  preferTVShows: boolean;
+  minAgeMonths?: number;
 }
 
-interface JustWatchOffer {
-  monetization_type: string;
-  presentation_type: string;
-  provider_id: number;
-  urls?: {
-    standard_web?: string;
-  };
-}
-
-// Public broadcaster provider IDs in JustWatch
-const PUBLIC_BROADCASTER_IDS: { [country: string]: { [name: string]: number } } = {
-  DE: {
-    'ARD Mediathek': 360,
-    'ZDF Mediathek': 362,
-    'Arte': 234,
-    '3sat': 513
+const MEDIATHEK_CONFIG: { [name: string]: MediathekHeuristics } = {
+  'ARD Mediathek': {
+    showForCountries: ['DE', 'AT', 'CH'],
+    preferTVShows: true,
+    minAgeMonths: 0 // Shows current and recent content
   },
-  AT: {
-    'ORF TVthek': 283
+  'ZDF Mediathek': {
+    showForCountries: ['DE', 'AT', 'CH'],
+    preferTVShows: true,
+    minAgeMonths: 0
   },
-  CH: {
-    'SRF': 457
+  'Arte Mediathek': {
+    showForCountries: ['DE', 'AT', 'CH', 'FR'],
+    preferTVShows: false, // Arte has movies and shows
+    minAgeMonths: 0
   },
-  GB: {
-    'BBC iPlayer': 38,
-    'ITV Hub': 65,
-    'Channel 4': 103
+  '3sat Mediathek': {
+    showForCountries: ['DE', 'AT', 'CH'],
+    preferTVShows: false,
+    minAgeMonths: 0
   },
-  US: {
-    'PBS': 209
+  'ORF TVthek': {
+    showForCountries: ['AT'],
+    preferTVShows: true,
+    minAgeMonths: 0
   },
-  FR: {
-    'France.tv': 263,
-    'Arte': 234
+  'SRF Play': {
+    showForCountries: ['CH'],
+    preferTVShows: true,
+    minAgeMonths: 0
   },
-  // Add more as needed
+  'BBC iPlayer': {
+    showForCountries: ['GB'],
+    preferTVShows: true,
+    minAgeMonths: 0
+  },
+  'ITV Hub': {
+    showForCountries: ['GB'],
+    preferTVShows: true,
+    minAgeMonths: 0
+  },
+  'Channel 4': {
+    showForCountries: ['GB'],
+    preferTVShows: true,
+    minAgeMonths: 0
+  },
+  'PBS': {
+    showForCountries: ['US'],
+    preferTVShows: false,
+    minAgeMonths: 0
+  },
+  'France.tv': {
+    showForCountries: ['FR'],
+    preferTVShows: true,
+    minAgeMonths: 0
+  }
 };
 
 export async function GET(request: NextRequest) {
@@ -51,7 +73,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get('title');
     const country = searchParams.get('country') || 'DE';
-    const mediaType = searchParams.get('media_type'); // 'movie' or 'show'
+    const mediaType = searchParams.get('media_type'); // 'movie' or 'tv'
 
     if (!title) {
       return NextResponse.json(
@@ -60,58 +82,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Search for the title on JustWatch
-    const searchUrl = `${JUSTWATCH_API_BASE}/titles/${country.toLowerCase()}/popular`;
-    
-    const searchResponse = await fetch(searchUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      body: JSON.stringify({
-        query: title,
-        content_types: mediaType === 'tv' ? ['show'] : ['movie'],
-        page_size: 5
-      })
-    });
-
-    if (!searchResponse.ok) {
-      console.error('JustWatch search failed:', searchResponse.status);
-      return NextResponse.json(
-        { available: [], error: 'JustWatch search failed' },
-        { status: 200 }
-      );
-    }
-
-    const searchData = await searchResponse.json();
-    
-    if (!searchData.items || searchData.items.length === 0) {
-      return NextResponse.json({ available: [] }, { status: 200 });
-    }
-
-    // Get the first matching item
-    const item = searchData.items[0];
-    const offers: JustWatchOffer[] = item.offers || [];
-
-    // Filter for public broadcasters
-    const publicBroadcasterIds = PUBLIC_BROADCASTER_IDS[country] || {};
     const availableOn: string[] = [];
+    const isTVShow = mediaType === 'tv';
 
-    Object.entries(publicBroadcasterIds).forEach(([name, providerId]) => {
-      const hasOffer = offers.some(
-        offer => 
-          offer.provider_id === providerId && 
-          (offer.monetization_type === 'flatrate' || offer.monetization_type === 'free')
-      );
-      
-      if (hasOffer) {
-        availableOn.push(name);
+    // Apply heuristics to determine which mediatheken to show
+    Object.entries(MEDIATHEK_CONFIG).forEach(([name, config]) => {
+      // Check if this mediathek serves the current country
+      if (!config.showForCountries.includes(country)) {
+        return;
       }
+
+      // If mediathek prefers TV shows and this is a movie, skip (unless it's Arte which shows both)
+      if (config.preferTVShows && !isTVShow && name !== 'Arte Mediathek' && name !== '3sat Mediathek') {
+        return;
+      }
+
+      // Show the mediathek as potentially available
+      availableOn.push(name);
     });
 
     return NextResponse.json(
-      { available: availableOn },
+      { 
+        available: availableOn,
+        note: 'Public broadcasters shown based on content type and region. Click to search their platforms.'
+      },
       {
         status: 200,
         headers: {
@@ -121,7 +115,7 @@ export async function GET(request: NextRequest) {
     );
 
   } catch (error) {
-    console.error('JustWatch API error:', error);
+    console.error('Mediathek check error:', error);
     return NextResponse.json(
       { available: [], error: 'Failed to check availability' },
       { status: 200 }
