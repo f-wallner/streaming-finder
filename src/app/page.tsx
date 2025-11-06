@@ -258,10 +258,19 @@ export default function Home() {
                       setLoading(false);
                     }
                   }}
-                  className="w-full px-4 py-2 text-left text-sm font-mono hover:bg-opacity-50 transition-colors"
-                  style={{ color: 'var(--foreground)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(80, 250, 123, 0.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  className="w-full px-4 py-2 text-left text-sm font-mono transition-colors"
+                  style={{ 
+                    color: 'var(--foreground)',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(80, 250, 123, 0.05)';
+                    e.currentTarget.style.color = 'var(--primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--foreground)';
+                  }}
                 >
                   {term}
                 </button>
