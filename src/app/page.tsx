@@ -140,8 +140,8 @@ export default function Home() {
       {/* Left Side - Search and Results */}
       <div className={`${selectedItem && !isMobile ? 'w-1/2' : 'w-full'} ${isMobile && showMobileDetail ? 'hidden' : 'flex'} transition-all duration-300 flex-col h-screen`}>
         {/* Header */}
-        <header className="border-b flex-shrink-0" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
-          <div className="px-4 md:px-6 py-3 flex items-center gap-3">
+        <header className="border-b flex-shrink-0" style={{ borderColor: 'var(--border)', backgroundColor: '#0a0a0a' }}>
+          <div className="px-4 md:px-6 py-3 flex items-center gap-3" style={{ backgroundColor: '#0a0a0a' }}>
             <button
               onClick={() => {
                 setQuery("");
