@@ -24,6 +24,8 @@ export default function Home() {
   const [selectedItem, setSelectedItem] = useState<{ mediaType: 'movie' | 'tv'; id: number } | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showMobileDetail, setShowMobileDetail] = useState(false);
+  const [newReleases, setNewReleases] = useState<SearchResult[]>([]);
+  const [loadingReleases, setLoadingReleases] = useState(true);
 
   // Detect mobile on mount and window resize
   useEffect(() => {
@@ -50,6 +52,25 @@ export default function Home() {
       console.error('Failed to load search history:', err);
       localStorage.removeItem('searchHistory');
     }
+  }, []);
+
+  // Load new releases on mount
+  useEffect(() => {
+    const fetchNewReleases = async () => {
+      try {
+        const response = await fetch('/api/new-releases');
+        if (response.ok) {
+          const data = await response.json();
+          setNewReleases(data.results || []);
+        }
+      } catch (err) {
+        console.error('Failed to load new releases:', err);
+      } finally {
+        setLoadingReleases(false);
+      }
+    };
+
+    fetchNewReleases();
   }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -121,8 +142,21 @@ export default function Home() {
         {/* Header */}
         <header className="border-b flex-shrink-0" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
           <div className="px-4 md:px-6 py-3 flex items-center gap-3">
-            <span className="text-base font-mono" style={{ color: 'var(--primary)' }}>$</span>
-            <h1 className="text-sm font-mono" style={{ color: 'var(--foreground-bright)' }}>streaming-finder</h1>
+            <button
+              onClick={() => {
+                setQuery("");
+                setResults([]);
+                setSelectedItem(null);
+                setError(null);
+                if (isMobile) {
+                  setShowMobileDetail(false);
+                }
+              }}
+              className="flex items-center gap-3 hover:opacity-70 transition-opacity"
+            >
+              <span className="text-base font-mono" style={{ color: 'var(--primary)' }}>$</span>
+              <h1 className="text-sm font-mono" style={{ color: 'var(--foreground-bright)' }}>streaming-finder</h1>
+            </button>
           </div>
         </header>
 
@@ -330,6 +364,94 @@ export default function Home() {
           ) : query && !error ? (
             <div className="text-center py-20">
               <p className="font-mono text-xs" style={{ color: 'var(--foreground-muted)' }}>no results found</p>
+            </div>
+          ) : !error && !query ? (
+            // Show new releases when no search query
+            <div>
+              <h2 className="text-xs font-mono mb-4" style={{ color: 'var(--primary)' }}>
+                // new releases (last 30 days)
+              </h2>
+              
+              {loadingReleases ? (
+                <div className="flex flex-col items-center justify-center py-20">
+                  <svg className="animate-spin h-8 w-8 mb-3" style={{ color: 'var(--primary)' }} fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p className="text-xs font-mono" style={{ color: 'var(--foreground-muted)' }}>loading new releases...</p>
+                </div>
+              ) : newReleases.length > 0 ? (
+                <div className="space-y-2">
+                  {newReleases.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        if (item.media_type === 'movie' || item.media_type === 'tv') {
+                          setSelectedItem({ mediaType: item.media_type, id: item.id });
+                          if (isMobile) {
+                            setShowMobileDetail(true);
+                          }
+                        }
+                      }}
+                      className="group w-full flex items-center gap-3 md:gap-4 px-3 md:px-3 py-2 rounded border transition-all text-left"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)';
+                        e.currentTarget.style.backgroundColor = 'rgba(80, 250, 123, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border)';
+                        e.currentTarget.style.backgroundColor = 'var(--surface)';
+                      }}
+                    >
+                      {/* Small Poster */}
+                      <div className="flex-shrink-0">
+                        {item.poster_path ? (
+                          <div className="relative w-10 h-[60px] md:w-12 md:h-[72px] rounded overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
+                            <img
+                              src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
+                              alt={item.title || item.name || 'Poster'}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-10 h-[60px] md:w-12 md:h-[72px] rounded flex items-center justify-center" style={{ backgroundColor: 'var(--surface)' }}>
+                            <svg className="w-4 h-4 md:w-5 md:h-5" style={{ color: 'var(--foreground-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Title and Type */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-mono truncate" style={{ color: 'var(--foreground-bright)' }}>
+                          {item.title || item.name || 'Unknown'}
+                        </h3>
+                        <p className="text-xs font-mono" style={{ color: 'var(--foreground-muted)' }}>
+                          {item.media_type === 'movie' ? 'movie' : 'tv series'}
+                        </p>
+                      </div>
+
+                      {/* Arrow */}
+                      <div className="flex-shrink-0">
+                        <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" style={{ color: 'var(--primary)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20">
+                  <p className="font-mono text-xs" style={{ color: 'var(--foreground-muted)' }}>no new releases available</p>
+                </div>
+              )}
             </div>
           ) : !error ? (
             <div className="text-center py-20">
