@@ -154,8 +154,15 @@ export default function Home() {
               }}
               className="flex items-center gap-3 hover:opacity-70 transition-opacity"
             >
-              <span className="text-base font-mono" style={{ color: 'var(--primary)' }}>$</span>
-              <h1 className="text-sm font-mono" style={{ color: 'var(--foreground-bright)' }}>streaming-finder</h1>
+              <span className="text-base font-mono" style={{ color: 'var(--primary)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect>
+                  <polyline points="17 2 12 7 7 2"></polyline>
+                  <circle cx="6" cy="11" r="0.5" fill="currentColor"></circle>
+                  <circle cx="9" cy="11" r="0.5" fill="currentColor"></circle>
+                </svg>
+              </span>
+              <h1 className="text-sm font-mono" style={{ color: 'var(--primary)' }}>streaming_finder</h1>
             </button>
           </div>
         </header>
