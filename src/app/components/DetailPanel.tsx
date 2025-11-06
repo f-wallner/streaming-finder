@@ -265,8 +265,8 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {/* Close Button - Hidden on mobile (back button in parent) */}
-      <div className="hidden md:flex flex-shrink-0 px-4 md:px-8 py-3 border-b justify-between items-center" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+      {/* Close Button - Visible on desktop, hidden on mobile (back button in parent) */}
+      <div className="flex flex-shrink-0 px-4 md:px-8 py-3 border-b justify-between items-center" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
         <span className="text-xs font-mono" style={{ color: 'var(--foreground-muted)' }}>details</span>
         <button
           onClick={onClose}
