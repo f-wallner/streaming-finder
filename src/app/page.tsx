@@ -153,6 +153,7 @@ export default function Home() {
                 }
               }}
               className="flex items-center gap-3 hover:opacity-70 transition-opacity"
+              style={{ backgroundColor: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
             >
               <span className="text-base font-mono" style={{ color: 'var(--primary)' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
