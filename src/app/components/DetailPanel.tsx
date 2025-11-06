@@ -66,6 +66,7 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedProvider, setExpandedProvider] = useState<number | null>(null);
+  const [availableMediathekenByCountry, setAvailableMediathekenByCountry] = useState<{ [country: string]: string[] }>({});
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -98,6 +99,47 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
 
     fetchDetails();
   }, [mediaType, id]);
+
+  // Fetch JustWatch availability for public mediatheken
+  useEffect(() => {
+    const checkMediathekAvailability = async () => {
+      if (!details) return;
+
+      const title = details.title || details.name;
+      if (!title) return;
+
+      // Get all unique countries from providers
+      const countries = Array.from(
+        new Set(
+          Object.keys(details.watch_providers || {})
+        )
+      );
+
+      // Check each country
+      const results: { [country: string]: string[] } = {};
+      
+      for (const country of countries) {
+        try {
+          const response = await fetch(
+            `/api/justwatch?title=${encodeURIComponent(title)}&country=${country}&media_type=${mediaType}`
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.available && data.available.length > 0) {
+              results[country] = data.available;
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to check mediathek availability for ${country}:`, err);
+        }
+      }
+
+      setAvailableMediathekenByCountry(results);
+    };
+
+    checkMediathekAvailability();
+  }, [details, mediaType]);
 
   const aggregateProviders = (): ProviderAvailability[] => {
     if (!details?.watch_providers) return [];
@@ -188,9 +230,19 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
   const userScore = details.vote_average ? Math.round(details.vote_average * 10) : null;
   const providers = aggregateProviders();
   
-  // Get all unique countries from providers
+  // Filter public media to only show what's actually available
   const availableCountries = Array.from(new Set(providers.flatMap(p => p.countries)));
-  const publicMedia = getPublicBroadcastersForCountries(availableCountries);
+  const publicMedia = availableCountries
+    .map(country => {
+      const availableNames = availableMediathekenByCountry[country] || [];
+      if (availableNames.length === 0) return null;
+      
+      const broadcasters = getPublicBroadcastersForCountries([country])[0]?.broadcasters || [];
+      const filteredBroadcasters = broadcasters.filter(b => availableNames.includes(b.name));
+      
+      return filteredBroadcasters.length > 0 ? { country, broadcasters: filteredBroadcasters } : null;
+    })
+    .filter((item): item is { country: string; broadcasters: Array<{ name: string; url: string; search_url?: string }> } => item !== null);
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
