@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getPublicBroadcastersForCountries } from "../lib/publicBroadcasters";
+import { getProviderGroup, getProviderPopularity } from "../lib/providerUtils";
 
 interface Provider {
   logo_path: string;
@@ -43,6 +44,8 @@ interface ProviderAvailability {
   availableInDE: boolean;
   countries: string[];
   types: { [country: string]: ('stream' | 'rent' | 'buy')[] };
+  groupName?: string; // For grouped providers like "Netflix" instead of "Netflix basic with Ads"
+  variants?: string[]; // List of variant names (e.g., ["Netflix", "Netflix basic with Ads"])
 }
 
 interface DetailPanelProps {
@@ -144,7 +147,7 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
   const aggregateProviders = (): ProviderAvailability[] => {
     if (!details?.watch_providers) return [];
 
-    const providerMap = new Map<number, ProviderAvailability>();
+    const providerMap = new Map<string, ProviderAvailability>(); // Changed to use string key (group name)
 
     try {
       Object.entries(details.watch_providers).forEach(([countryCode, providers]) => {
@@ -156,9 +159,16 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
           providerList.forEach(provider => {
             if (!provider?.provider_id || !provider?.provider_name) return;
             
-            const existing = providerMap.get(provider.provider_id);
+            const groupName = getProviderGroup(provider.provider_name);
+            const existing = providerMap.get(groupName);
 
             if (existing) {
+              // Add variant name if not already included
+              if (!existing.variants?.includes(provider.provider_name)) {
+                existing.variants = existing.variants || [];
+                existing.variants.push(provider.provider_name);
+              }
+              
               if (!existing.countries.includes(countryCode)) {
                 existing.countries.push(countryCode);
               }
@@ -172,8 +182,10 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                 existing.availableInDE = true;
               }
             } else {
-              providerMap.set(provider.provider_id, {
+              providerMap.set(groupName, {
                 provider,
+                groupName,
+                variants: [provider.provider_name],
                 availableInDE: countryCode === 'DE',
                 countries: [countryCode],
                 types: { [countryCode]: [type] }
@@ -191,10 +203,21 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
       return [];
     }
 
+    // Sort by: 1) Availability in DE, 2) Popularity, 3) Name
     return Array.from(providerMap.values()).sort((a, b) => {
+      // First: DE availability
       if (a.availableInDE && !b.availableInDE) return -1;
       if (!a.availableInDE && b.availableInDE) return 1;
-      return a.provider.provider_name.localeCompare(b.provider.provider_name);
+      
+      // Second: Popularity
+      const popA = getProviderPopularity(a.groupName || a.provider.provider_name);
+      const popB = getProviderPopularity(b.groupName || b.provider.provider_name);
+      if (popA !== popB) return popB - popA;
+      
+      // Third: Alphabetical
+      const nameA = a.groupName || a.provider.provider_name;
+      const nameB = b.groupName || b.provider.provider_name;
+      return nameA.localeCompare(nameB);
     });
   };
 
@@ -326,10 +349,11 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                     country !== 'DE' && types.includes('buy')
                   );
 
-                  const isExpanded = expandedProvider === item.provider.provider_id;
+                  const isExpanded = expandedProvider === index;
+                  const displayName = item.groupName || item.provider.provider_name;
 
                   return (
-                    <div key={item.provider.provider_id}>
+                    <div key={`${item.groupName || item.provider.provider_id}-${index}`}>
                       <div
                         className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-3 py-2 border-b items-center"
                         style={{
@@ -340,15 +364,20 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                         {/* Provider Name */}
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-mono truncate" style={{ color: 'var(--foreground)' }}>
-                            {item.provider.provider_name}
+                            {displayName}
                           </span>
+                          {item.variants && item.variants.length > 1 && (
+                            <span className="text-xs font-mono" style={{ color: 'var(--foreground-muted)' }}>
+                              ({item.variants.length})
+                            </span>
+                          )}
                         </div>
 
                         {/* Stream */}
                         <div className="flex justify-center">
                           {hasStreamDE && (
                             <button
-                              onClick={() => setExpandedProvider(isExpanded ? null : item.provider.provider_id)}
+                              onClick={() => setExpandedProvider(isExpanded ? null : index)}
                               className="w-4 h-4 flex items-center justify-center rounded transition-all hover:scale-110"
                               style={{
                                 backgroundColor: '#50fa7b',
@@ -362,11 +391,11 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                           )}
                           {!hasStreamDE && hasStreamOther && (
                             <button
-                              onClick={() => setExpandedProvider(isExpanded ? null : item.provider.provider_id)}
+                              onClick={() => setExpandedProvider(isExpanded ? null : index)}
                               className="w-4 h-4 flex items-center justify-center rounded transition-all hover:scale-110"
                               style={{
-                                backgroundColor: '#3a8a5a',
-                                color: '#e0e0e0'
+                                backgroundColor: '#ff9500',
+                                color: '#0a0a0a'
                               }}
                             >
                               <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -380,7 +409,7 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                         <div className="flex justify-center">
                           {hasRentDE && (
                             <button
-                              onClick={() => setExpandedProvider(isExpanded ? null : item.provider.provider_id)}
+                              onClick={() => setExpandedProvider(isExpanded ? null : index)}
                               className="w-4 h-4 flex items-center justify-center rounded transition-all hover:scale-110"
                               style={{
                                 backgroundColor: '#50fa7b',
@@ -394,11 +423,11 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                           )}
                           {!hasRentDE && hasRentOther && (
                             <button
-                              onClick={() => setExpandedProvider(isExpanded ? null : item.provider.provider_id)}
+                              onClick={() => setExpandedProvider(isExpanded ? null : index)}
                               className="w-4 h-4 flex items-center justify-center rounded transition-all hover:scale-110"
                               style={{
-                                backgroundColor: '#3a8a5a',
-                                color: '#e0e0e0'
+                                backgroundColor: '#ff9500',
+                                color: '#0a0a0a'
                               }}
                             >
                               <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -412,7 +441,7 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                         <div className="flex justify-center">
                           {hasBuyDE && (
                             <button
-                              onClick={() => setExpandedProvider(isExpanded ? null : item.provider.provider_id)}
+                              onClick={() => setExpandedProvider(isExpanded ? null : index)}
                               className="w-4 h-4 flex items-center justify-center rounded transition-all hover:scale-110"
                               style={{
                                 backgroundColor: '#50fa7b',
@@ -426,11 +455,11 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                           )}
                           {!hasBuyDE && hasBuyOther && (
                             <button
-                              onClick={() => setExpandedProvider(isExpanded ? null : item.provider.provider_id)}
+                              onClick={() => setExpandedProvider(isExpanded ? null : index)}
                               className="w-4 h-4 flex items-center justify-center rounded transition-all hover:scale-110"
                               style={{
-                                backgroundColor: '#3a8a5a',
-                                color: '#e0e0e0'
+                                backgroundColor: '#ff9500',
+                                color: '#0a0a0a'
                               }}
                             >
                               <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -451,6 +480,30 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                             color: 'var(--foreground-muted)'
                           }}
                         >
+                          {/* Show variants if available */}
+                          {item.variants && item.variants.length > 1 && (
+                            <div className="mb-2 pb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+                              <div className="text-xs font-mono mb-1" style={{ color: 'var(--primary)' }}>
+                                Variants:
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {item.variants.map((variant: string) => (
+                                  <span
+                                    key={variant}
+                                    className="px-1.5 py-0.5 rounded text-xs font-mono"
+                                    style={{
+                                      backgroundColor: 'var(--surface)',
+                                      color: 'var(--foreground)',
+                                      border: '1px solid var(--border)'
+                                    }}
+                                  >
+                                    {variant}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
                           <div className="space-y-1">
                             {item.countries.map((country: string) => (
                               <div key={country} className="flex items-center justify-between py-0.5">
