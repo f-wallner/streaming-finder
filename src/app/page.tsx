@@ -22,6 +22,19 @@ export default function Home() {
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [selectedItem, setSelectedItem] = useState<{ mediaType: 'movie' | 'tv'; id: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileDetail, setShowMobileDetail] = useState(false);
+
+  // Detect mobile on mount and window resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Load search history on mount
   useEffect(() => {
@@ -104,17 +117,17 @@ export default function Home() {
   return (
     <main className="min-h-screen h-screen flex overflow-hidden" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
       {/* Left Side - Search and Results */}
-      <div className={`${selectedItem ? 'w-1/2' : 'w-full'} transition-all duration-300 flex flex-col h-screen`}>
+      <div className={`${selectedItem && !isMobile ? 'w-1/2' : 'w-full'} ${isMobile && showMobileDetail ? 'hidden' : 'flex'} transition-all duration-300 flex-col h-screen`}>
         {/* Header */}
         <header className="border-b flex-shrink-0" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
-          <div className="px-6 py-3 flex items-center gap-3">
+          <div className="px-4 md:px-6 py-3 flex items-center gap-3">
             <span className="text-base font-mono" style={{ color: 'var(--primary)' }}>$</span>
             <h1 className="text-sm font-mono" style={{ color: 'var(--foreground-bright)' }}>streaming-finder</h1>
           </div>
         </header>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="px-6 py-8">
+          <div className="px-4 md:px-6 py-6 md:py-8">
         {/* Search Bar */}
         <div className="mb-8 relative">
           <form onSubmit={handleSearch} className="relative">
@@ -224,9 +237,12 @@ export default function Home() {
                   onClick={() => {
                     if (item.media_type === 'movie' || item.media_type === 'tv') {
                       setSelectedItem({ mediaType: item.media_type, id: item.id });
+                      if (isMobile) {
+                        setShowMobileDetail(true);
+                      }
                     }
                   }}
-                  className="group w-full flex items-center gap-4 px-3 py-2 rounded border transition-all text-left"
+                  className="group w-full flex items-center gap-3 md:gap-4 px-3 md:px-3 py-2 rounded border transition-all text-left"
                   style={{ borderColor: 'var(--border)', backgroundColor: 'var(--surface)' }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = 'var(--primary)';
@@ -240,7 +256,7 @@ export default function Home() {
                   {/* Small Poster */}
                   <div className="flex-shrink-0">
                     {item.poster_path ? (
-                      <div className="relative w-12 h-[72px] rounded overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
+                      <div className="relative w-10 h-[60px] md:w-12 md:h-[72px] rounded overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
                         <img
                           src={`https://image.tmdb.org/t/p/w185${item.poster_path}`}
                           alt={item.title || item.name || 'Poster'}
@@ -253,8 +269,8 @@ export default function Home() {
                         />
                       </div>
                     ) : (
-                      <div className="w-12 h-[72px] rounded flex items-center justify-center" style={{ backgroundColor: 'var(--surface)' }}>
-                        <svg className="w-5 h-5" style={{ color: 'var(--foreground-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-10 h-[60px] md:w-12 md:h-[72px] rounded flex items-center justify-center" style={{ backgroundColor: 'var(--surface)' }}>
+                        <svg className="w-4 h-4 md:w-5 md:h-5" style={{ color: 'var(--foreground-muted)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
                         </svg>
                       </div>
@@ -299,11 +315,35 @@ export default function Home() {
 
       {/* Right Side - Detail Panel */}
       {selectedItem && (
-        <div className="w-1/2 h-screen border-l flex flex-col overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+        <div className={`${isMobile ? 'fixed inset-0 z-50' : 'w-1/2'} ${isMobile && !showMobileDetail ? 'hidden' : 'flex'} h-screen border-l flex-col overflow-hidden`} style={{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }}>
+          {/* Mobile Back Button */}
+          {isMobile && (
+            <div className="border-b px-4 py-3 flex items-center gap-3" style={{ borderColor: 'var(--border)' }}>
+              <button
+                onClick={() => {
+                  setShowMobileDetail(false);
+                  setSelectedItem(null);
+                }}
+                className="flex items-center gap-2 text-sm font-mono hover:opacity-70 transition-opacity"
+                style={{ color: 'var(--primary)' }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                back to results
+              </button>
+            </div>
+          )}
+          
           <DetailPanel
             mediaType={selectedItem.mediaType}
             id={selectedItem.id}
-            onClose={() => setSelectedItem(null)}
+            onClose={() => {
+              setSelectedItem(null);
+              if (isMobile) {
+                setShowMobileDetail(false);
+              }
+            }}
           />
         </div>
       )}

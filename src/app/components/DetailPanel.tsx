@@ -269,8 +269,8 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
 
   return (
     <div className="h-full flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {/* Close Button */}
-      <div className="flex-shrink-0 px-8 py-3 border-b flex justify-between items-center" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+      {/* Close Button - Hidden on mobile (back button in parent) */}
+      <div className="hidden md:flex flex-shrink-0 px-4 md:px-8 py-3 border-b justify-between items-center" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
         <span className="text-xs font-mono" style={{ color: 'var(--foreground-muted)' }}>details</span>
         <button
           onClick={onClose}
@@ -281,10 +281,10 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-4 md:py-6 space-y-4 md:space-y-6">
         {/* Poster */}
         {details.poster_path && (
-          <div className="relative w-full max-w-[200px] aspect-[2/3] rounded overflow-hidden mx-auto" style={{ backgroundColor: 'var(--surface)' }}>
+          <div className="relative w-full max-w-[160px] md:max-w-[200px] aspect-[2/3] rounded overflow-hidden mx-auto" style={{ backgroundColor: 'var(--surface)' }}>
             <img
               src={`https://image.tmdb.org/t/p/w500${details.poster_path}`}
               alt={title}
@@ -355,7 +355,7 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                   return (
                     <div key={`${item.groupName || item.provider.provider_id}-${index}`}>
                       <div
-                        className="grid grid-cols-[1fr_60px_60px_60px] gap-2 px-3 py-2 border-b items-center"
+                        className="grid grid-cols-[1fr_60px_60px_60px] md:grid-cols-[1fr_80px_80px_80px] gap-2 px-3 py-2 border-b items-center"
                         style={{
                           borderColor: 'var(--border)',
                           backgroundColor: index % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'
@@ -367,7 +367,7 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
                             {displayName}
                           </span>
                           {item.variants && item.variants.length > 1 && (
-                            <span className="text-xs font-mono" style={{ color: 'var(--foreground-muted)' }}>
+                            <span className="text-xs font-mono hidden md:inline" style={{ color: 'var(--foreground-muted)' }}>
                               ({item.variants.length})
                             </span>
                           )}
