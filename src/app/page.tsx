@@ -183,9 +183,40 @@ export default function Home() {
               {searchHistory.map((term, index) => (
                 <button
                   key={index}
-                  onClick={() => {
+                  onClick={async () => {
                     setQuery(term);
                     setShowHistory(false);
+                    
+                    // Trigger search immediately
+                    setLoading(true);
+                    setError(null);
+                    
+                    try {
+                      const response = await fetch(`/api/search?query=${encodeURIComponent(term)}`);
+                      
+                      if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(errorData.error || 'Suche fehlgeschlagen');
+                      }
+                      
+                      const data = await response.json();
+                      
+                      if (!data.results || !Array.isArray(data.results)) {
+                        throw new Error('Ungültige Antwort vom Server');
+                      }
+                      
+                      const filteredResults = data.results.filter((item: SearchResult) => 
+                        item.media_type === 'movie' || item.media_type === 'tv'
+                      );
+                      
+                      setResults(filteredResults);
+                    } catch (err) {
+                      console.error("Fehler bei der Suche:", err);
+                      setError(err instanceof Error ? err.message : 'Ein unbekannter Fehler ist aufgetreten');
+                      setResults([]);
+                    } finally {
+                      setLoading(false);
+                    }
                   }}
                   className="w-full px-4 py-2 text-left text-sm font-mono hover:bg-opacity-50 transition-colors"
                   style={{ color: 'var(--foreground)' }}
