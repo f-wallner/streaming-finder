@@ -165,13 +165,19 @@ export default function Home() {
         {/* Search Bar */}
         <div className="mb-8 relative">
           <form onSubmit={handleSearch} className="relative">
-            <div className="flex items-center gap-3 px-4 py-3 rounded border transition-colors" 
+            <div className="flex items-center gap-3 px-5 py-4 md:py-5 rounded border transition-colors" 
               style={{ 
                 backgroundColor: 'var(--surface)',
                 borderColor: 'var(--border)'
               }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--primary)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+              }}
             >
-              <span className="text-lg font-mono" style={{ color: 'var(--primary)' }}>›</span>
+              <span className="text-xl md:text-2xl font-mono" style={{ color: 'var(--primary)' }}>›</span>
               <input
                 type="text"
                 value={query}
@@ -180,7 +186,7 @@ export default function Home() {
                 onBlur={() => setTimeout(() => setShowHistory(false), 200)}
                 onKeyDown={handleKeyDown}
                 placeholder="search movies and series..."
-                className="flex-1 bg-transparent text-base outline-none font-mono"
+                className="flex-1 bg-transparent text-base md:text-lg outline-none font-mono"
                 style={{ color: 'var(--foreground-bright)' }}
                 maxLength={500}
                 autoComplete="off"
@@ -192,12 +198,12 @@ export default function Home() {
                 style={{ color: loading ? 'var(--foreground-muted)' : 'var(--primary)', opacity: loading ? 0.5 : 1 }}
               >
                 {loading ? (
-                  <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                 ) : (
-                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 )}
