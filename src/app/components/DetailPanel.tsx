@@ -111,17 +111,15 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
       const title = details.title || details.name;
       if (!title) return;
 
-      // Get all unique countries from providers
-      const countries = Array.from(
-        new Set(
-          Object.keys(details.watch_providers || {})
-        )
-      );
+      // Always check DE, AT, CH for German-speaking mediatheken
+      // Plus any countries from watch_providers
+      const providerCountries = Object.keys(details.watch_providers || {});
+      const allCountries = Array.from(new Set(['DE', 'AT', 'CH', ...providerCountries]));
 
       // Check each country
       const results: { [country: string]: string[] } = {};
       
-      for (const country of countries) {
+      for (const country of allCountries) {
         try {
           const response = await fetch(
             `/api/justwatch?title=${encodeURIComponent(title)}&country=${country}&media_type=${mediaType}`
@@ -253,11 +251,9 @@ export default function DetailPanel({ mediaType, id, onClose }: DetailPanelProps
   const userScore = details.vote_average ? Math.round(details.vote_average * 10) : null;
   const providers = aggregateProviders();
   
-  // Filter public media to only show what's actually available
-  const availableCountries = Array.from(new Set(providers.flatMap(p => p.countries)));
-  const publicMedia = availableCountries
-    .map(country => {
-      const availableNames = availableMediathekenByCountry[country] || [];
+  // Show public media for all checked countries (not just where providers exist)
+  const publicMedia = Object.entries(availableMediathekenByCountry)
+    .map(([country, availableNames]) => {
       if (availableNames.length === 0) return null;
       
       const broadcasters = getPublicBroadcastersForCountries([country])[0]?.broadcasters || [];
